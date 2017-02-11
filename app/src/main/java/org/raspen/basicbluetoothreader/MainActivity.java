@@ -6,10 +6,10 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -18,12 +18,12 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
+    //private static final String TAG = "MainActivity";
 
     List<String> deviceNames = new ArrayList<>();
     final List<String> devices = new ArrayList<>();
 
-    String selectedDevice;
+    String selectedDeviceAddress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,8 +62,11 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
                 int position = ((AlertDialog) dialog).getListView().getCheckedItemPosition();
-                selectedDevice = devices.get(position);
-                Log.d(TAG, "Selected device: " + selectedDevice);
+                selectedDeviceAddress = devices.get(position);
+
+                TextView selectedDevice = (TextView) findViewById(R.id.selected_device);
+                selectedDevice.setText(getResources().getString(R.string.selected_device,
+                        selectedDeviceAddress));
             }
         });
 
