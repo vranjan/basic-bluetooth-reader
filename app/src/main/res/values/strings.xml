@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Basic Bluetooth Reader</string>
+    <string name="select_device">Select Device</string>
+    <string name="connect">Connect</string>
 </resources>
