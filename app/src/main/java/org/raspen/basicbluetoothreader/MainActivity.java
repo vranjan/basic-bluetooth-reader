@@ -2,28 +2,43 @@ package org.raspen.basicbluetoothreader;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.pires.obd.commands.engine.RPMCommand;
+import com.github.pires.obd.commands.protocol.EchoOffCommand;
+import com.github.pires.obd.commands.protocol.LineFeedOffCommand;
+import com.github.pires.obd.commands.protocol.SelectProtocolCommand;
+import com.github.pires.obd.commands.protocol.TimeoutCommand;
+import com.github.pires.obd.commands.temperature.AmbientAirTemperatureCommand;
+import com.github.pires.obd.enums.ObdProtocols;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
-    //private static final String TAG = "MainActivity";
+    private static final String TAG = "MainActivity";
 
     List<String> deviceNames = new ArrayList<>();
     final List<String> devices = new ArrayList<>();
 
     String selectedDeviceAddress;
+    BluetoothSocket socket;
+
+    boolean isInitialized = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +52,62 @@ public class MainActivity extends AppCompatActivity {
                 showSelectDialog();
             }
         });
+
+        Button mConnectButton = (Button) findViewById(R.id.connect_button);
+        mConnectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                connect();
+                if (socket.isConnected()) {
+                    initOBD();
+
+                    RPMCommand command = new RPMCommand();
+                    while (!Thread.currentThread().isInterrupted()) {
+                        try {
+                            command.run(socket.getInputStream(), socket.getOutputStream());
+                            Log.d(TAG, "RPM: " + command.getFormattedResult());
+                        } catch (IOException | InterruptedException e) {
+                            Log.e(TAG, "Failed to run command.");
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void connect() {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        BluetoothDevice  device  = adapter.getRemoteDevice(selectedDeviceAddress);
+
+        UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+        try {
+            socket = device.createInsecureRfcommSocketToServiceRecord(uuid);
+            socket.connect();
+            Log.d(TAG, "Connected to Bluetooth device.");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e(TAG, "Could not connect to Bluetooth device.");
+        }
+    }
+
+    private void initOBD() {
+        if (socket.isConnected()) {
+            try {
+                new EchoOffCommand().run(socket.getInputStream(), socket.getOutputStream());
+                new LineFeedOffCommand().run(socket.getInputStream(), socket.getOutputStream());
+                new TimeoutCommand(125).run(socket.getInputStream(), socket.getOutputStream());
+                new SelectProtocolCommand(ObdProtocols.AUTO).run(socket.getInputStream(),
+                        socket.getOutputStream());
+
+                isInitialized = true;
+                Log.d(TAG, "Intialized OBD.");
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+                Log.e(TAG, "Could not initialize OBD.");
+            }
+        }
     }
 
     private void showSelectDialog() {
